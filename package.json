@@ -1,0 +1,13 @@
+{
+  "name": "assistente-lettere",
+  "version": "1.0.0",
+  "description": "Assistente per capire le lettere (foto, PDF, Word, testo)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {}
+}

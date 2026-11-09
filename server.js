@@ -5,7 +5,7 @@ const fs = require("fs");
 const path = require("path");
 const zlib = require("zlib");
 
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 const KEY = process.env.ANTHROPIC_API_KEY;
 const MODEL = "claude-sonnet-5-5";
 
@@ -134,4 +134,4 @@ http.createServer((req, res) => {
     return send(res, 200, fs.readFileSync(path.join(__dirname, "scena3.jpg")), "image/jpeg");
   }
   send(res, 404, "Non trovato", "text/plain");
-}).listen(PORT, "127.0.0.1", () => console.log(`Apri http://localhost:${PORT}`));
+}).listen(PORT, "0.0.0.0", () => console.log(`Apri http://localhost:${PORT}`));

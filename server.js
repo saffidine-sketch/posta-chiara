@@ -19,6 +19,20 @@ Rispondi SOLO con un oggetto JSON con queste quattro chiavi (testo breve, al mas
 Se un'informazione non si legge bene, scrivi "Non si legge bene, chiedi aiuto a un familiare."
 Se il contenuto non è una lettera, scrivi in "cosa" che non si riesce a leggere e di provare con un'altra foto.`;
 
+const API_URL = process.env.ANTHROPIC_API_URL || "https://api.anthropic.com/v1/messages";
+
+// Messaggi per la pagina: mai dettagli tecnici, né sulla chiave né sul credito.
+const FRASE_OCCUPATO = "Oggi Posta Chiara è molto richiesta. Riprova tra qualche ora, grazie per la pazienza.";
+const occupato = () => ({ errore: FRASE_OCCUPATO, occupato: true });
+const ERRORE_GENERICO = { errore: "Qualcosa non ha funzionato. Riprova tra poco." };
+
+// Credito finito, troppe richieste, servizio sovraccarico o chiave non valida: per la persona è sempre "molto richiesta".
+function servizioOccupato(status, data) {
+  if ([401, 402, 403, 429, 503, 529].includes(status)) return true;
+  const msg = String(data?.error?.message || "");
+  return /credit|balance|billing|quota|rate limit|overloaded/i.test(msg);
+}
+
 function send(res, code, body, type = "application/json") {
   const bin = Buffer.isBuffer(body);
   res.writeHead(code, { "Content-Type": bin ? type : type + "; charset=utf-8" });
@@ -69,7 +83,7 @@ function restituisci(chi) {
 }
 
 async function spiega(req, res) {
-  if (!KEY) return send(res, 500, { errore: "Manca la chiave ANTHROPIC_API_KEY." });
+  if (!KEY) return send(res, 503, occupato());
   let raw = "";
   for await (const c of req) raw += c;
   let nome, dati;
@@ -104,7 +118,7 @@ async function spiega(req, res) {
 
   let r, data;
   try {
-    r = await fetch("https://api.anthropic.com/v1/messages", {
+    r = await fetch(API_URL, {
       method: "POST",
       headers: { "x-api-key": KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
       body: JSON.stringify({
@@ -113,10 +127,13 @@ async function spiega(req, res) {
         messages: [{ role: "user", content: [ blocco, { type: "text", text: PROMPT } ] }],
       }),
     });
-    data = await r.json();
-  } catch (e) { restituisci(chi); throw e; }
+    data = await r.json().catch(() => null);
+  } catch { restituisci(chi); return send(res, 503, occupato()); }
   // Se il servizio sbaglia, la lettura non viene contata.
-  if (!r.ok) { restituisci(chi); return send(res, 502, { errore: data.error?.message || "Errore del servizio." }); }
+  if (!r.ok) {
+    restituisci(chi);
+    return servizioOccupato(r.status, data) ? send(res, 503, occupato()) : send(res, 502, ERRORE_GENERICO);
+  }
   const testo = data.content?.find((b) => b.type === "text")?.text || "";
   const j = /\{[\s\S]*\}/.exec(testo);
   try { send(res, 200, JSON.parse(j[0])); }
@@ -125,7 +142,7 @@ async function spiega(req, res) {
 
 http.createServer((req, res) => {
   if (req.method === "POST" && req.url === "/spiega") {
-    return spiega(req, res).catch((e) => send(res, 500, { errore: String(e.message || e) }));
+    return spiega(req, res).catch(() => send(res, 500, ERRORE_GENERICO));
   }
   if (req.method === "GET" && (req.url === "/" || req.url === "/index.html")) {
     return send(res, 200, fs.readFileSync(path.join(__dirname, "index.html"), "utf8"), "text/html");

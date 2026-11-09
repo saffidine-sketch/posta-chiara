@@ -42,6 +42,12 @@
   input[type=file] { position:absolute; opacity:0; width:1px; height:1px; }
   .formati { font-size:1.6rem; margin:24px 0 0; }
 
+  .consenso { display:flex; gap:20px; align-items:flex-start; text-align:left; max-width:900px; margin:32px auto 0;
+              background:#fff8e1; border-radius:20px; padding:20px 24px; font-size:1.8rem; font-weight:600; cursor:pointer; }
+  .consenso input { flex:none; width:44px; height:44px; margin:0; cursor:pointer; accent-color:var(--blu); }
+  #consensoErrore { display:none; font-size:1.8rem; font-weight:700; color:var(--errore); margin:16px 0 0; }
+  .privacy { font-size:1.5rem; max-width:900px; margin:20px auto 0; text-align:left; }
+  #avvertenza { display:none; font-size:1.5rem; margin:8px 0 0; }
   .passi { list-style:none; margin:44px 0 0; padding:0; display:flex; gap:24px; flex-wrap:wrap; justify-content:center; text-align:left; }
   .passi li { flex:1 1 260px; display:flex; align-items:center; gap:18px; background:#fff8e1; border-radius:20px;
               padding:20px 24px; font-size:2rem; font-weight:700; }
@@ -103,6 +109,13 @@
       </div>
       <p class="formati">Va bene una foto, un PDF, un documento Word o un file di testo.</p>
 
+      <label class="consenso" for="consenso">
+        <input type="checkbox" id="consenso">
+        <span>Ho capito: non carico documenti con dati che non voglio condividere. Se serve, copro codice fiscale e numeri di conto prima di fare la foto.</span>
+      </label>
+      <p id="consensoErrore" role="alert">Prima spunta la casella qui sopra, poi puoi caricare la lettera.</p>
+      <p class="privacy">La tua lettera viene letta solo per spiegartela. Noi non la salviamo e non la mostriamo a nessuno. Il servizio che la legge può tenerla al massimo 30 giorni, poi la cancella. Non viene usata per addestrare l'intelligenza artificiale. Per limitare l’uso a 5 letture al giorno, teniamo per poco tempo il tuo indirizzo di rete, mai il contenuto della lettera.</p>
+
       <ol class="passi">
         <li><span class="n">1</span>Scegli la lettera</li>
         <li><span class="n">2</span>Aspetta un attimo</li>
@@ -117,6 +130,7 @@
         <div id="attesa">Sto leggendo la lettera… un momento di pazienza.</div>
         <div id="errore"></div>
         <div id="righe"></div>
+        <p id="avvertenza">Questa è una spiegazione semplice, non il parere di un esperto. Per decisioni importanti, parla con una persona di fiducia o con un professionista.</p>
       </div>
     </div>
   </main>
@@ -125,8 +139,18 @@
 const $ = (id) => document.getElementById(id);
 const etichette = [["chi","Chi la manda"],["cosa","Cosa chiede"],["quanto","Quanto c'è da pagare"],["quando","Entro quando"]];
 
-$("bottone").addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); $("file").click(); } });
-$("bottoneFoto").addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); èTelefono ? $("fileFoto").click() : apriWebcam(); } });
+// Prima di caricare qualsiasi cosa serve la casella "Ho capito".
+function consensoOk() {
+  const ok = $("consenso").checked;
+  $("consensoErrore").style.display = ok ? "none" : "block";
+  return ok;
+}
+$("consenso").addEventListener("change", consensoOk);
+$("consensoErrore").style.display = "none";
+$("bottone").addEventListener("click", (e) => { if (!consensoOk()) e.preventDefault(); });
+
+$("bottone").addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); if (consensoOk()) $("file").click(); } });
+$("bottoneFoto").addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); if (!consensoOk()) return; èTelefono ? $("fileFoto").click() : apriWebcam(); } });
 
 // Riduce la foto (max 1800 px) per averla più leggera e veloce da inviare.
 function riduci(file) {
@@ -156,7 +180,7 @@ function leggi(file) {
 
 async function elabora(f) {
   $("righe").innerHTML = ""; $("errore").style.display = "none"; $("attesa").style.display = "block";
-  $("anteprima").style.display = "none"; $("nomefile").style.display = "none";
+  $("anteprima").style.display = "none"; $("nomefile").style.display = "none"; $("avvertenza").style.display = "none";
   try {
     const nome = f.name.toLowerCase();
     const eImmagine = f.type.startsWith("image/");
@@ -171,6 +195,7 @@ async function elabora(f) {
     $("righe").innerHTML = etichette.map(([k, t]) =>
       `<div class="riga"><div class="et">${t}</div><div class="val"></div></div>`).join("");
     document.querySelectorAll(".val").forEach((el, i) => el.textContent = d[etichette[i][0]] || "—");
+    $("avvertenza").style.display = "block";
   } catch (err) {
     $("errore").textContent = err.message; $("errore").style.display = "block";
   } finally {
@@ -208,7 +233,7 @@ function scatta() {
   c.getContext("2d").drawImage(v, 0, 0);
   c.toBlob((b) => { chiudiWebcam(); if (b) elabora(new File([b], "foto-webcam.jpg", { type: "image/jpeg" })); }, "image/jpeg", 0.9);
 }
-function clicFoto(e) { if (!èTelefono) { e.preventDefault(); apriWebcam(); } }
+function clicFoto(e) { if (!consensoOk()) return e.preventDefault(); if (!èTelefono) { e.preventDefault(); apriWebcam(); } }
 $("bottoneFoto").addEventListener("click", clicFoto);
 $("scatta").addEventListener("click", scatta);
 $("annulla").addEventListener("click", chiudiWebcam);

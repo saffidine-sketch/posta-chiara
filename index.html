@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Posta Chiara</title>
+<style>
+  :root { --giallo:#ffd24a; --giallo2:#ffbf2e; --testo:#1a1a1a; --blu:#12306b; --blu2:#0b214d; --errore:#8a0000;
+          --ombra:0 8px 24px rgba(60,40,0,.16); }
+  * { box-sizing: border-box; }
+  body { margin:0; background:#fff; color:var(--testo);
+         font-family:"Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+         font-size:2rem; line-height:1.4; }
+
+  /* Fascia in alto */
+  .fascia { background:linear-gradient(135deg,var(--giallo),var(--giallo2)); padding:48px 6vw;
+            display:flex; align-items:center; justify-content:space-between; gap:48px; flex-wrap:wrap; }
+  .testi { flex:1 1 480px; }
+  .titolo { display:flex; align-items:center; gap:24px; margin:0 0 16px; }
+  .titolo svg { width:110px; height:auto; flex:none; }
+  h1 { font-size:4.6rem; font-weight:800; line-height:1.05; margin:0; }
+  .frase { font-size:2.4rem; font-weight:600; margin:0; max-width:24ch; }
+  .fascia img { flex:0 1 420px; width:min(420px,100%); max-height:560px; object-fit:cover;
+                border-radius:28px; box-shadow:0 10px 28px rgba(60,40,0,.25); }
+
+  /* Riquadro principale */
+  main { padding:48px 6vw 64px; }
+  .riquadro { background:#fff; border-radius:32px; box-shadow:var(--ombra); border:2px solid #f1e6c8;
+              padding:48px 5vw; text-align:center; }
+  .btn { display:inline-block; font-size:2.8rem; font-weight:800; background:var(--blu); color:#fff;
+         border-radius:24px; padding:34px 56px; cursor:pointer; box-shadow:0 8px 0 var(--blu2); }
+  .btn:hover { background:var(--blu2); }
+  .btn:focus, .btn:focus-within { outline:8px solid var(--giallo2); outline-offset:6px; }
+  button.btn { font-family:inherit; border:0; }
+  .btn.grigio { background:#fff; color:var(--testo); box-shadow:0 8px 0 #cfc3a0; border:3px solid var(--testo); }
+  .btn.grigio:hover { background:#fff3cf; }
+  #webcam { display:none; position:fixed; inset:0; z-index:50; background:rgba(26,26,26,.7); align-items:center; justify-content:center; padding:20px; }
+  .webcam-box { background:#fff; border-radius:32px; box-shadow:var(--ombra); padding:32px; max-width:900px; width:100%; text-align:center; }
+  #video { width:100%; max-height:60vh; border-radius:20px; background:#222; margin-bottom:24px; }
+  #webcamErrore { display:none; font-size:2rem; font-weight:700; background:#fff8e1; border-radius:16px; padding:20px; margin:0 0 24px; }
+  .bottoni { display:flex; gap:32px; justify-content:center; flex-wrap:wrap; }
+  input[type=file] { position:absolute; opacity:0; width:1px; height:1px; }
+  .formati { font-size:1.6rem; margin:24px 0 0; }
+
+  .passi { list-style:none; margin:44px 0 0; padding:0; display:flex; gap:24px; flex-wrap:wrap; justify-content:center; text-align:left; }
+  .passi li { flex:1 1 260px; display:flex; align-items:center; gap:18px; background:#fff8e1; border-radius:20px;
+              padding:20px 24px; font-size:2rem; font-weight:700; }
+  .passi .n { flex:none; width:60px; height:60px; border-radius:50%; background:var(--giallo2); font-size:2.2rem; font-weight:800;
+              display:flex; align-items:center; justify-content:center; }
+
+  /* Risultati */
+  .area { display:flex; gap:40px; align-items:flex-start; margin-top:40px; flex-wrap:wrap; }
+  #anteprima { max-width:28vw; max-height:70vh; border-radius:16px; box-shadow:var(--ombra); display:none; background:#fff; }
+  #nomefile { display:none; font-size:1.8rem; font-weight:700; background:#fff; box-shadow:var(--ombra);
+              border-radius:16px; padding:16px 22px; max-width:28vw; word-break:break-word; }
+  #risultato { flex:1; min-width:min(480px,100%); }
+  .riga { background:#fff; border-radius:20px; padding:22px 30px; margin-bottom:20px; box-shadow:var(--ombra); border:2px solid #f1e6c8; }
+  .riga .et { font-size:1.6rem; font-weight:800; text-transform:uppercase; letter-spacing:1px; color:#7a4b00; }
+  .riga .val { font-size:2.8rem; font-weight:700; line-height:1.25; margin-top:6px; }
+  #attesa { display:none; font-size:2.4rem; font-weight:800; }
+  #errore { display:none; font-size:2rem; color:var(--errore); font-weight:700; background:#fff;
+            border:4px solid var(--errore); border-radius:16px; padding:20px; }
+</style>
+</head>
+<body>
+  <header class="fascia">
+    <div class="testi">
+      <div class="titolo">
+        <svg viewBox="0 0 120 90" role="img" aria-label="Busta sorridente">
+          <rect x="6" y="10" width="108" height="72" rx="12" fill="#fff" stroke="#1a1a1a" stroke-width="5"/>
+          <path d="M10 18 L60 54 L110 18" fill="none" stroke="#1a1a1a" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/>
+          <circle cx="44" cy="56" r="4.5" fill="#1a1a1a"/><circle cx="76" cy="56" r="4.5" fill="#1a1a1a"/>
+          <path d="M46 67 Q60 78 74 67" fill="none" stroke="#1a1a1a" stroke-width="4.5" stroke-linecap="round"/>
+          <circle cx="34" cy="66" r="5" fill="#ff9a8a" opacity=".8"/><circle cx="86" cy="66" r="5" fill="#ff9a8a" opacity=".8"/>
+        </svg>
+        <h1>Posta Chiara</h1>
+      </div>
+      <p class="frase">Ti spiego io cosa dice la tua lettera.</p>
+    </div>
+    <img src="/scena3.jpg" alt="Un nonno sorridente al computer">
+  </header>
+
+  <div id="webcam" role="dialog" aria-label="Webcam">
+    <div class="webcam-box">
+      <video id="video" autoplay playsinline muted></video>
+      <p id="webcamErrore"></p>
+      <div class="bottoni">
+        <button class="btn" id="scatta" type="button">Scatta</button>
+        <button class="btn grigio" id="annulla" type="button">Annulla</button>
+      </div>
+    </div>
+  </div>
+
+  <main>
+    <section class="riquadro">
+      <div class="bottoni">
+      <label class="btn" tabindex="0" id="bottone">Scegli la foto o il documento
+        <input type="file" id="file" accept="image/*,.pdf,application/pdf,.doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.txt,text/plain">
+      </label>
+      <label class="btn" tabindex="0" id="bottoneFoto">Scatta una foto
+        <input type="file" id="fileFoto" accept="image/*" capture="environment">
+      </label>
+      </div>
+      <p class="formati">Va bene una foto, un PDF, un documento Word o un file di testo.</p>
+
+      <ol class="passi">
+        <li><span class="n">1</span>Scegli la lettera</li>
+        <li><span class="n">2</span>Aspetta un attimo</li>
+        <li><span class="n">3</span>Leggi la spiegazione</li>
+      </ol>
+    </section>
+
+    <div class="area">
+      <img id="anteprima" alt="La tua lettera">
+      <div id="nomefile"></div>
+      <div id="risultato">
+        <div id="attesa">Sto leggendo la lettera… un momento di pazienza.</div>
+        <div id="errore"></div>
+        <div id="righe"></div>
+      </div>
+    </div>
+  </main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const etichette = [["chi","Chi la manda"],["cosa","Cosa chiede"],["quanto","Quanto c'è da pagare"],["quando","Entro quando"]];
+
+$("bottone").addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); $("file").click(); } });
+$("bottoneFoto").addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); èTelefono ? $("fileFoto").click() : apriWebcam(); } });
+
+// Riduce la foto (max 1800 px) per averla più leggera e veloce da inviare.
+function riduci(file) {
+  return new Promise((ok, ko) => {
+    const url = URL.createObjectURL(file), img = new Image();
+    img.onload = () => {
+      const s = Math.min(1, 1800 / Math.max(img.width, img.height));
+      const c = document.createElement("canvas");
+      c.width = Math.round(img.width * s); c.height = Math.round(img.height * s);
+      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      ok(c.toDataURL("image/jpeg", 0.85));
+    };
+    img.onerror = () => ko(new Error("Non riesco ad aprire questa foto. Prova con un'altra."));
+    img.src = url;
+  });
+}
+
+function leggi(file) {
+  return new Promise((ok, ko) => {
+    const r = new FileReader();
+    r.onload = () => ok(r.result);
+    r.onerror = () => ko(new Error("Non riesco ad aprire questo file."));
+    r.readAsDataURL(file);
+  });
+}
+
+async function elabora(f) {
+  $("righe").innerHTML = ""; $("errore").style.display = "none"; $("attesa").style.display = "block";
+  $("anteprima").style.display = "none"; $("nomefile").style.display = "none";
+  try {
+    const nome = f.name.toLowerCase();
+    const eImmagine = f.type.startsWith("image/");
+    if (!eImmagine && f.size > 20 * 1024 * 1024) throw new Error("Il file è troppo grande. Provane uno più piccolo.");
+    const dati = eImmagine ? await riduci(f) : await leggi(f);
+    if (eImmagine) { $("anteprima").src = dati; $("anteprima").style.display = "block"; }
+    else { $("nomefile").textContent = f.name; $("nomefile").style.display = "block"; }
+    const r = await fetch("/spiega", { method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ nome, dati }) });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.errore || "Qualcosa non ha funzionato.");
+    $("righe").innerHTML = etichette.map(([k, t]) =>
+      `<div class="riga"><div class="et">${t}</div><div class="val"></div></div>`).join("");
+    document.querySelectorAll(".val").forEach((el, i) => el.textContent = d[etichette[i][0]] || "—");
+  } catch (err) {
+    $("errore").textContent = err.message; $("errore").style.display = "block";
+  } finally {
+    $("attesa").style.display = "none";
+  }
+}
+for (const id of ["file", "fileFoto"]) {
+  $(id).addEventListener("change", (e) => { const f = e.target.files[0]; e.target.value = ""; if (f) elabora(f); });
+}
+
+// Webcam sul computer; sul telefono resta la fotocamera diretta.
+const èTelefono = matchMedia("(pointer: coarse)").matches || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+let flusso = null;
+function chiudiWebcam() {
+  if (flusso) flusso.getTracks().forEach((t) => t.stop());
+  flusso = null; $("webcam").style.display = "none"; $("video").srcObject = null;
+}
+async function apriWebcam() {
+  $("webcamErrore").style.display = "none"; $("webcam").style.display = "flex"; $("scatta").style.display = "none";
+  try {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error("nessuna");
+    flusso = await navigator.mediaDevices.getUserMedia({ video: true });
+    $("video").srcObject = flusso; $("scatta").style.display = "inline-block";
+  } catch (err) {
+    const negato = err && (err.name === "NotAllowedError" || err.name === "SecurityError");
+    $("webcamErrore").textContent = negato
+      ? "Non posso usare la webcam perché il permesso non è stato dato. Va bene lo stesso: premi “Annulla” e usa il bottone “Scegli la foto o il documento”."
+      : "Non trovo nessuna webcam su questo computer. Va bene lo stesso: premi “Annulla” e usa il bottone “Scegli la foto o il documento”.";
+    $("webcamErrore").style.display = "block";
+  }
+}
+function scatta() {
+  const v = $("video"); if (!v.videoWidth) return;
+  const c = document.createElement("canvas"); c.width = v.videoWidth; c.height = v.videoHeight;
+  c.getContext("2d").drawImage(v, 0, 0);
+  c.toBlob((b) => { chiudiWebcam(); if (b) elabora(new File([b], "foto-webcam.jpg", { type: "image/jpeg" })); }, "image/jpeg", 0.9);
+}
+function clicFoto(e) { if (!èTelefono) { e.preventDefault(); apriWebcam(); } }
+$("bottoneFoto").addEventListener("click", clicFoto);
+$("scatta").addEventListener("click", scatta);
+$("annulla").addEventListener("click", chiudiWebcam);
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") chiudiWebcam(); });
+</script>
+</body>
+</html>

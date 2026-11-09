@@ -1,0 +1,19 @@
+# Chiavi e segreti: non vanno mai su GitHub
+.env
+.env.*
+*.key
+
+# Dati del server (conteggio letture giornaliere)
+limiti.json
+
+# Cartelle e file inutili
+node_modules/
+*.log
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Altre immagini: solo scena3.jpg va nel progetto
+*.jpg
+!scena3.jpg
